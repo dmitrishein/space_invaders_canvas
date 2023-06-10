@@ -198,12 +198,40 @@ class InvaderProjectile {
     this.position.y += this.velocity.y;
   }
 }
+class Particle {
+  constructor({ position, velocity, radius, color }) {
+    this.position = position;
+    this.velocity = velocity;
 
+    this.color = color;
+    this.radius = radius;
+    this.opacity = 1;
+  }
+
+  draw() {
+    context.save();
+    context.globalAlpha = this.opacity;
+    context.beginPath();
+    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+    context.fillStyle = this.color;
+    context.fill();
+    context.closePath();
+    context.restore();
+  }
+
+  update() {
+    this.draw();
+    this.position.x += this.velocity.x;
+    this.position.y += this.velocity.y;
+
+    this.opacity -= 0.01;
+  }
+}
 const player = new Player();
 const projectiles = [];
 const grids = [];
 const invaderProjectiles = [];
-
+const particles = [];
 const keys = {
   a: {
     isPressed: false,
@@ -216,11 +244,40 @@ const keys = {
 let frames = 0;
 let randomInterval = Math.floor(Math.random() * 500 + 500);
 
+function createParticles({object, color}) {
+  for (let i = 0; i < 15; i++) {
+    particles.push(
+      new Particle({
+        position: {
+          x: object.position.x + object.width / 2,
+          y: object.position.y + object.height / 2,
+        },
+        velocity: {
+          // make particles throw in different ways
+          x: (Math.random() - 0.5) * 2,
+          y: (Math.random() - 0.5) * 2,
+        },
+        radius: Math.random() * 3,
+        color: color || '#BAA0DE',
+      })
+    );
+  }
+}
 function animate() {
   requestAnimationFrame(animate);
   context.fillStyle = "black";
   context.fillRect(0, 0, canvas.width, canvas.height);
   player.update();
+  particles.forEach((particle) => {
+    if (particle.opacity <= 0) {
+      setTimeout(()=> {
+        particles.splice(i, 1);
+      });
+    } else {
+      particle.update();
+    }
+  });
+
   invaderProjectiles.forEach((invaderProjectile, index) => {
     if (
       invaderProjectile.position.y + invaderProjectile.height >=
@@ -232,6 +289,7 @@ function animate() {
       });
     } else invaderProjectile.update();
 
+    // if projectile hits player
     if (
       invaderProjectile.position.y + invaderProjectile.height >=
         player.position.y &&
@@ -239,7 +297,14 @@ function animate() {
         player.position.x &&
       invaderProjectile.position.x <= player.position.x + player.width
     ) {
+      setTimeout(() => {
+        invaderProjectiles.splice(index, 1);
+      });
       console.log("You lose");
+      createParticles({
+        object: player,
+        color: 'white'
+      });
     }
   });
   projectiles.forEach((projectile, index) => {
@@ -261,7 +326,7 @@ function animate() {
     }
     grid.invaders.forEach((invader, i) => {
       invader.update({ velocity: grid.velocity });
-
+      //projectiles hit enemy
       projectiles.forEach((projectile, j) => {
         if (
           projectile.position.y - projectile.radius <=
@@ -281,6 +346,9 @@ function animate() {
 
             //remove invader and projectile
             if (invaderFound && projectileFound) {
+              createParticles({
+                object: invader
+              });
               grid.invaders.splice(i, 1);
               projectiles.splice(j, 1);
 
